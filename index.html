@@ -129,6 +129,19 @@
                     drop-shadow(0 0 10px #ff3399)
                     drop-shadow(0 0 25px #ff3399)
                     drop-shadow(0 0 45px #ff3399);
+            transition: opacity 0.3s ease;
+        }
+
+        .heart-piece {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .heart-piece svg {
+            filter: drop-shadow(0 0 4px #ffccff)
+                    drop-shadow(0 0 10px #ff3399)
+                    drop-shadow(0 0 25px #ff3399)
+                    drop-shadow(0 0 45px #ff3399);
         }
         
         #matrixCanvas {
@@ -141,6 +154,13 @@
             z-index: 1;
             opacity: 0;
             transition: opacity 0.5s ease;
+        }
+
+        @keyframes fallPiece {
+            to {
+                transform: translateY(500px) rotate(360deg);
+                opacity: 0;
+            }
         }
     </style>
 </head>
@@ -168,7 +188,7 @@
     <div class="neon-center-set" id="neonSet">
         <div class="neon-text">LOVE ME</div>
         
-        <svg class="neon-heart-svg" viewBox="0 0 24 24" fill="#ffccff">
+        <svg class="neon-heart-svg" id="heartSvg" viewBox="0 0 24 24" fill="#ffccff">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
         </svg>
     </div>
@@ -179,6 +199,8 @@
         const canvas = document.getElementById('matrixCanvas');
         const ctx = canvas.getContext('2d');
         let animationId;
+        let noClickCount = 0;
+        let matrixIntensity = 0.03;
 
         const textToRepeat = "LOVE ME";
         const fontSize = 11; 
@@ -203,8 +225,8 @@
         }
 
         function drawMatrix() {
-            // Opacidade bem baixa (0.03) acumula o texto e elimina quase toda a escuridão
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+            // Opacidade aumenta a cada clique no "No"
+            ctx.fillStyle = `rgba(0, 0, 0, ${matrixIntensity})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.font = `bold ${fontSize}px 'Press Start 2P', monospace`;
@@ -214,8 +236,8 @@
                 const col = columns[i];
                 ctx.fillText(textToRepeat, col.x, col.y);
 
-                // Velocidade ligeiramente aumentada para movimentar o aglomerado denso
-                col.y += 6;
+                // Velocidade aumenta com cada clique
+                col.y += 6 + (noClickCount * 2);
 
                 // Reseta antes para manter o fluxo sempre cheio e empilhado
                 if (col.y > canvas.height + fontSize) {
@@ -231,6 +253,53 @@
             }
         });
 
+        function breakHeart() {
+            const heart = document.getElementById('heartSvg');
+            if (!heart) return;
+
+            // Criar pedaços do coração
+            const pieces = [
+                { path: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09V21.35z", x: -50, y: -50 },
+                { path: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09V21.35z", x: 50, y: -50 },
+                { path: "M12 21.35V8.5c1.09-1.28 2.76-2.09 4.5-2.09C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", x: -50, y: 50 },
+                { path: "M12 21.35V8.5c1.09-1.28 2.76-2.09 4.5-2.09C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", x: 50, y: 50 }
+            ];
+
+            pieces.forEach((piece, index) => {
+                const container = document.createElement('div');
+                container.className = 'heart-piece';
+                container.style.left = '50%';
+                container.style.top = '50%';
+                container.style.transform = 'translate(-50%, -50%)';
+                
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', '#ffccff');
+                svg.style.width = '70px';
+                svg.style.height = '70px';
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', piece.path);
+                svg.appendChild(path);
+                
+                container.appendChild(svg);
+                document.getElementById('neonSet').appendChild(container);
+                
+                // Animação de queda
+                container.style.animation = `fallPiece ${0.8 + index * 0.1}s ease-in forwards`;
+                container.style.setProperty('--tx', piece.x + 'px');
+                container.style.setProperty('--ty', piece.y + 'px');
+                
+                setTimeout(() => container.remove(), 1000);
+            });
+
+            // Remover coração original
+            heart.style.opacity = '0';
+            setTimeout(() => {
+                heart.style.display = 'none';
+            }, 300);
+        }
+
         function triggerYes() {
             cancelAnimationFrame(animationId);
             document.getElementById('viewInterface').style.display = 'none';
@@ -240,6 +309,9 @@
         }
 
         function triggerNo() {
+            noClickCount++;
+            matrixIntensity = Math.min(0.15, 0.03 + (noClickCount * 0.02));
+
             const frame = document.getElementById('popupWindow');
             frame.style.transform = 'translate(4px, 4px)';
             setTimeout(() => frame.style.transform = 'translate(-4px, -4px)', 40);
@@ -254,6 +326,9 @@
                 
                 drawMatrix();
                 document.getElementById('neonSet').style.display = 'flex';
+                
+                // Animar coração quebrando
+                breakHeart();
             }, 130);
         }
     </script>
