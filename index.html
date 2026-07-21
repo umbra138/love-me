@@ -135,6 +135,7 @@
         .heart-piece {
             position: absolute;
             pointer-events: none;
+            z-index: 7;
         }
 
         .heart-piece svg {
@@ -157,8 +158,12 @@
         }
 
         @keyframes fallPiece {
-            to {
-                transform: translateY(500px) rotate(360deg);
+            0% {
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, calc(-50% + 500px)) scale(0.5) rotate(360deg);
                 opacity: 0;
             }
         }
@@ -201,6 +206,7 @@
         let animationId;
         let noClickCount = 0;
         let matrixIntensity = 0.03;
+        let heartBroken = false;
 
         const textToRepeat = "LOVE ME";
         const fontSize = 11; 
@@ -210,7 +216,6 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
 
-            // Espaçamento colado para não deixar frestas horizontais escuras
             const columnWidth = ctx.measureText(textToRepeat).width + 4; 
             const columnCount = Math.floor(canvas.width / columnWidth) + 1;
 
@@ -218,14 +223,12 @@
             for (let i = 0; i < columnCount; i++) {
                 columns.push({
                     x: i * columnWidth,
-                    // Espalha as posições iniciais verticalmente para preencher mais rápido
                     y: Math.random() * -canvas.height
                 });
             }
         }
 
         function drawMatrix() {
-            // Opacidade aumenta a cada clique no "No"
             ctx.fillStyle = `rgba(0, 0, 0, ${matrixIntensity})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -236,10 +239,8 @@
                 const col = columns[i];
                 ctx.fillText(textToRepeat, col.x, col.y);
 
-                // Velocidade aumenta com cada clique
                 col.y += 6 + (noClickCount * 2);
 
-                // Reseta antes para manter o fluxo sempre cheio e empilhado
                 if (col.y > canvas.height + fontSize) {
                     col.y = -fontSize;
                 }
@@ -254,15 +255,22 @@
         });
 
         function breakHeart() {
+            if (heartBroken) return;
+            heartBroken = true;
+
             const heart = document.getElementById('heartSvg');
             if (!heart) return;
 
-            // Criar pedaços do coração
+            // Ocultar coração original
+            heart.style.opacity = '0';
+            heart.style.pointerEvents = 'none';
+
+            // Criar 4 pedaços
             const pieces = [
-                { path: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09V21.35z", x: -50, y: -50 },
-                { path: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09V21.35z", x: 50, y: -50 },
-                { path: "M12 21.35V8.5c1.09-1.28 2.76-2.09 4.5-2.09C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", x: -50, y: 50 },
-                { path: "M12 21.35V8.5c1.09-1.28 2.76-2.09 4.5-2.09C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z", x: 50, y: 50 }
+                { dx: -60, dy: -60, path: "M12 12l-1-1C8 8 5 8 5 6c0-2 1-3 2.5-3 1 0 2 0.5 2.5 1 .5-.5 1.5-1 2.5-1 1.5 0 2.5 1 2.5 3 0 2-3 2-6 5l-1 1z" },
+                { dx: 60, dy: -60, path: "M12 12l1-1c3-2 6-2 6-4 0-2-1-3-2.5-3-1 0-2 0.5-2.5 1-.5-.5-1.5-1-2.5-1-1.5 0-2.5 1-2.5 3 0 2 3 2 6 5l1 1z" },
+                { dx: -60, dy: 60, path: "M12 12l-1 1C8 16 5 16 5 18c0 2 1 3 2.5 3 1 0 2-0.5 2.5-1 .5.5 1.5 1 2.5 1 1.5 0 2.5-1 2.5-3 0-2-3-2-6-5l-1-1z" },
+                { dx: 60, dy: 60, path: "M12 12l1 1c3 2 6 2 6 4 0 2-1 3-2.5 3-1 0-2-0.5-2.5-1-.5.5-1.5 1-2.5 1-1.5 0-2.5-1-2.5-3 0-2 3 2 6 5l1 1z" }
             ];
 
             pieces.forEach((piece, index) => {
@@ -270,7 +278,6 @@
                 container.className = 'heart-piece';
                 container.style.left = '50%';
                 container.style.top = '50%';
-                container.style.transform = 'translate(-50%, -50%)';
                 
                 const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 svg.setAttribute('viewBox', '0 0 24 24');
@@ -279,25 +286,21 @@
                 svg.style.height = '70px';
                 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', piece.path);
+                path.setAttribute('d', "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z");
                 svg.appendChild(path);
                 
                 container.appendChild(svg);
-                document.getElementById('neonSet').appendChild(container);
+                document.body.appendChild(container);
                 
-                // Animação de queda
-                container.style.animation = `fallPiece ${0.8 + index * 0.1}s ease-in forwards`;
-                container.style.setProperty('--tx', piece.x + 'px');
-                container.style.setProperty('--ty', piece.y + 'px');
+                // Ativar animação
+                setTimeout(() => {
+                    container.style.animation = `fallPiece ${0.9 + index * 0.05}s ease-in forwards`;
+                    container.style.left = `calc(50% + ${piece.dx}px)`;
+                    container.style.top = `calc(50% + ${piece.dy}px)`;
+                }, 10);
                 
-                setTimeout(() => container.remove(), 1000);
+                setTimeout(() => container.remove(), 1500);
             });
-
-            // Remover coração original
-            heart.style.opacity = '0';
-            setTimeout(() => {
-                heart.style.display = 'none';
-            }, 300);
         }
 
         function triggerYes() {
@@ -327,7 +330,7 @@
                 drawMatrix();
                 document.getElementById('neonSet').style.display = 'flex';
                 
-                // Animar coração quebrando
+                // Quebrar coração!
                 breakHeart();
             }, 130);
         }
